@@ -6,7 +6,7 @@ import 'package:speed_reader/core/constants/app_constants.dart';
 import 'package:speed_reader/core/router/app_router.dart';
 import 'package:speed_reader/core/widgets/common_widgets.dart';
 import 'package:speed_reader/features/library/providers/library_provider.dart';
-import 'package:speed_reader/features/library/widgets/library_grid.dart';
+import 'package:speed_reader/features/library/widgets/library_shelf.dart';
 
 /// Library Screen - Main screen showing all PDFs
 class LibraryScreen extends StatelessWidget {
@@ -83,9 +83,9 @@ class LibraryScreen extends StatelessWidget {
             );
           }
 
-          return LibraryGrid(
+          return LibraryShelf(
             items: libraryState.items,
-            onItemTap: (item) {
+            onItemOpen: (item) {
               context.push(AppRouter.pdfViewer, extra: item.filePath);
             },
             onItemDelete: (item) async {
