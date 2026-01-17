@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:speed_reader/core/widgets/glass_container.dart';
 import 'package:speed_reader/features/pdf_viewer/providers/search_provider.dart';
 
-/// Search bar widget for PDF text search
 class SearchBarWidget extends StatefulWidget {
   final VoidCallback? onClose;
 
@@ -12,14 +12,26 @@ class SearchBarWidget extends StatefulWidget {
   State<SearchBarWidget> createState() => _SearchBarWidgetState();
 }
 
-class _SearchBarWidgetState extends State<SearchBarWidget> {
+class _SearchBarWidgetState extends State<SearchBarWidget>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    // Auto-focus when opened
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
+    _animationController.forward();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
@@ -29,138 +41,110 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SearchProvider>(
-      builder: (context, searchProvider, child) {
-        final state = searchProvider.state;
+    final theme = Theme.of(context);
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Row(
-              children: [
-                // Search icon
-                const Icon(Icons.search, size: 20),
-                const SizedBox(width: 8),
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: GlassContainer(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          borderRadius: 20,
+          opacity: theme.brightness == Brightness.dark ? 0.2 : 0.4,
+          child: Consumer<SearchProvider>(
+            builder: (context, searchProvider, child) {
+              final state = searchProvider.state;
 
-                // Search text field
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    decoration: InputDecoration(
-                      hintText: 'Search in PDF...',
-                      border: InputBorder.none,
-                      isDense: true,
-                      suffixIcon: _controller.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                _controller.clear();
-                                searchProvider.clearSearch();
-                              },
-                            )
-                          : null,
-                    ),
-                    onChanged: (value) {
-                      // Debounce search
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        if (_controller.text == value) {
-                          searchProvider.search(value);
-                        }
-                      });
-                    },
-                    onSubmitted: (value) {
-                      searchProvider.search(value);
-                    },
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // Case sensitive toggle
-                IconButton(
-                  icon: Icon(
-                    Icons.text_fields,
+              return Row(
+                children: [
+                  Icon(
+                    Icons.search,
                     size: 20,
-                    color: state.caseSensitive
-                        ? Theme.of(context).colorScheme.primary
-                        : null,
+                    color: theme.colorScheme.primary,
                   ),
-                  tooltip: 'Case sensitive',
-                  onPressed: searchProvider.toggleCaseSensitive,
-                ),
-
-                // Match counter
-                if (state.hasResults)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      decoration: const InputDecoration(
+                        hintText: 'Search context...',
+                        border: InputBorder.none,
+                        isDense: true,
+                        hintStyle: TextStyle(fontSize: 14),
+                      ),
+                      style: const TextStyle(fontSize: 14),
+                      onChanged: (value) {
+                        searchProvider.search(value);
+                      },
                     ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
+                  ),
+                  if (state.hasResults) ...[
+                    Text(
                       '${state.currentMatchIndex + 1}/${state.totalMatches}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
-                  ),
-
-                // Navigation buttons
-                if (state.hasResults) ...[
+                    const SizedBox(width: 8),
+                    _SearchNavButton(
+                      icon: Icons.keyboard_arrow_up,
+                      onPressed: searchProvider.previousMatch,
+                    ),
+                    _SearchNavButton(
+                      icon: Icons.keyboard_arrow_down,
+                      onPressed: searchProvider.nextMatch,
+                    ),
+                  ],
+                  if (state.isSearching)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
                   IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_up, size: 20),
-                    tooltip: 'Previous',
-                    onPressed: searchProvider.previousMatch,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                    tooltip: 'Next',
-                    onPressed: searchProvider.nextMatch,
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () {
+                      searchProvider.clearSearch();
+                      widget.onClose?.call();
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
-
-                // Loading indicator
-                if (state.isSearching)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-
-                // Close button
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  tooltip: 'Close search',
-                  onPressed: () {
-                    searchProvider.clearSearch();
-                    widget.onClose?.call();
-                  },
-                ),
-              ],
-            ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchNavButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _SearchNavButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon, size: 22),
+      onPressed: onPressed,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      constraints: const BoxConstraints(),
     );
   }
 }

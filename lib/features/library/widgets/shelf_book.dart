@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:speed_reader/features/library/models/library_item.dart';
 
-/// A widget that represents a book on a shelf.
+/// A premium widget that represents a book on a shelf.
 /// It shows the spine by default and expands to show the cover on tap.
 class ShelfBook extends StatefulWidget {
   final LibraryItem item;
@@ -26,23 +26,22 @@ class _ShelfBookState extends State<ShelfBook>
   bool _isExpanded = false;
   late AnimationController _controller;
   late Animation<double> _animation;
-
-  // A random color for the spine if one isn't provided
   late Color _spineColor;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(
+        milliseconds: 600,
+      ), // Slightly slower for elegance
       vsync: this,
     );
     _animation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeInOutCubic,
+      curve: Curves.easeOutCubic,
     );
 
-    // Generate a consistent color based on the item id
     final random = math.Random(widget.item.id.hashCode);
     _spineColor = Colors.primaries[random.nextInt(Colors.primaries.length)];
   }
@@ -66,6 +65,10 @@ class _ShelfBookState extends State<ShelfBook>
 
   @override
   Widget build(BuildContext context) {
+    const double spineWidth = 42.0;
+    const double coverWidth = 160.0;
+    const double height = 210.0;
+
     return GestureDetector(
       onTap: () {
         if (!_isExpanded) {
@@ -77,60 +80,79 @@ class _ShelfBookState extends State<ShelfBook>
       child: AnimatedBuilder(
         animation: _animation,
         builder: (context, child) {
-          // Calculate dimensions
-          const double spineWidth = 40.0;
-          const double coverWidth = 160.0;
-          const double height = 200.0;
-
           final currentWidth =
               spineWidth + (coverWidth - spineWidth) * _animation.value;
 
           return Container(
             width: currentWidth,
             height: height,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(2, 4),
-                ),
-              ],
-            ),
+            margin: const EdgeInsets.symmetric(horizontal: 2),
             child: Stack(
               children: [
                 // The Front Cover (visible when expanded)
                 if (_animation.value > 0)
-                  Opacity(
-                    opacity: _animation.value,
-                    child: Container(
-                      width: coverWidth,
-                      height: height,
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(4),
-                          bottomRight: Radius.circular(4),
+                  Positioned(
+                    left: spineWidth * (1 - _animation.value),
+                    child: Opacity(
+                      opacity: _animation.value,
+                      child: Container(
+                        width: coverWidth,
+                        height: height,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(6),
+                            bottomRight: Radius.circular(6),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              offset: const Offset(4, 4),
+                            ),
+                          ],
                         ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child:
-                          widget.item.thumbnailPath != null &&
-                              File(widget.item.thumbnailPath!).existsSync()
-                          ? Image.file(
-                              File(widget.item.thumbnailPath!),
-                              fit: BoxFit.cover,
-                            )
-                          : Center(
-                              child: Icon(
-                                Icons.picture_as_pdf,
-                                size: 48,
-                                color: Theme.of(context).colorScheme.primary,
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          children: [
+                            widget.item.thumbnailPath != null &&
+                                    File(
+                                      widget.item.thumbnailPath!,
+                                    ).existsSync()
+                                ? Image.file(
+                                    File(widget.item.thumbnailPath!),
+                                    fit: BoxFit.cover,
+                                    width: coverWidth,
+                                    height: height,
+                                  )
+                                : Center(
+                                    child: Icon(
+                                      Icons.picture_as_pdf,
+                                      size: 48,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                            // Inner Spine Shadow (simulates depth where cover meets spine)
+                            Container(
+                              width: 8,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.3),
+                                    Colors.transparent,
+                                  ],
+                                ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 
@@ -141,112 +163,153 @@ class _ShelfBookState extends State<ShelfBook>
                   decoration: BoxDecoration(
                     color: _spineColor,
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(4),
-                      bottomLeft: const Radius.circular(4),
-                      topRight: Radius.circular(4 * (1 - _animation.value)),
-                      bottomRight: Radius.circular(4 * (1 - _animation.value)),
+                      topLeft: const Radius.circular(6),
+                      bottomLeft: const Radius.circular(6),
+                      topRight: Radius.circular(6 * (1 - _animation.value)),
+                      bottomRight: Radius.circular(6 * (1 - _animation.value)),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        offset: const Offset(2, 4),
+                      ),
+                    ],
                     gradient: LinearGradient(
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        _spineColor,
                         _spineColor.withValues(alpha: 0.8),
                         _spineColor,
+                        _spineColor.withValues(alpha: 0.9),
+                        _spineColor.withValues(alpha: 0.7),
                       ],
-                      stops: const [0.0, 0.5, 1.0],
+                      stops: const [0.0, 0.2, 0.8, 1.0],
                     ),
                   ),
                   child: Stack(
                     children: [
+                      // Texture Overlay
+                      Opacity(
+                        opacity: 0.1,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: NetworkImage(
+                                'https://www.transparenttextures.com/patterns/leather.png',
+                              ),
+                              repeat: ImageRepeat.repeat,
+                            ),
+                          ),
+                        ),
+                      ),
                       // Vertical text
                       Center(
                         child: RotatedBox(
                           quarterTurns: 3,
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
                               widget.item.fileName,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
                                 overflow: TextOverflow.ellipsis,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black26,
+                                    offset: Offset(1, 1),
+                                    blurRadius: 2,
+                                  ),
+                                ],
                               ),
                               maxLines: 1,
                             ),
                           ),
                         ),
                       ),
-                      // Decorative lines
-                      Positioned(
-                        top: 20,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          height: 2,
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 20,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          height: 2,
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                      ),
+                      // Gilded Decorative lines
+                      _buildSpineLine(top: 25),
+                      _buildSpineLine(bottom: 25),
                     ],
                   ),
                 ),
 
-                // Close button (only when expanded)
-                if (_isExpanded)
+                // Close & Delete Buttons
+                if (_isExpanded) ...[
                   Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () {
-                        _toggleExpand();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.close,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
+                    top: 8,
+                    right: 8,
+                    child: _CircleIconButton(
+                      icon: Icons.close,
+                      onTap: _toggleExpand,
                     ),
                   ),
-
-                // Delete button
-                if (_isExpanded && widget.onDelete != null)
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.white,
+                  if (widget.onDelete != null)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: _CircleIconButton(
+                        icon: Icons.delete_outline,
+                        onTap: widget.onDelete!,
+                        color: Colors.redAccent,
                       ),
-                      onPressed: widget.onDelete,
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.black.withValues(alpha: 0.5),
-                        padding: const EdgeInsets.all(4),
-                      ),
-                      constraints: const BoxConstraints(),
                     ),
-                  ),
+                ],
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSpineLine({double? top, double? bottom}) {
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: 0,
+      right: 0,
+      child: Container(
+        height: 1,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0.0),
+              Colors.white.withValues(alpha: 0.3),
+              Colors.white.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _CircleIconButton({
+    required this.icon,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 18, color: color ?? Colors.white),
       ),
     );
   }

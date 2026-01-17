@@ -441,27 +441,33 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                       GestureDetector(
                         onHorizontalDragEnd: (details) =>
                             _handleSwipe(details, notifier),
-                        child: Column(
+                        child: Stack(
                           children: [
-                            // Search bar
+                            PdfView(
+                              controller: _pdfController!,
+                              onPageChanged: (page) {
+                                notifier.setCurrentPage(page);
+                              },
+                            ),
+
+                            // Floating Search bar
                             if (_isSearchVisible)
-                              SearchBarWidget(
-                                onClose: () {
-                                  setState(() {
-                                    _isSearchVisible = false;
-                                  });
-                                },
+                              Align(
+                                alignment: Alignment.topCenter,
+                                child: SearchBarWidget(
+                                  onClose: () {
+                                    setState(() {
+                                      _isSearchVisible = false;
+                                    });
+                                  },
+                                ),
                               ),
 
-                            Expanded(
-                              child: PdfView(
-                                controller: _pdfController!,
-                                onPageChanged: (page) {
-                                  notifier.setCurrentPage(page);
-                                },
-                              ),
+                            // Floating PDF Controls
+                            Align(
+                              alignment: Alignment.bottomCenter,
+                              child: PdfControls(controller: _pdfController!),
                             ),
-                            PdfControls(controller: _pdfController!),
                           ],
                         ),
                       ),

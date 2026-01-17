@@ -55,69 +55,82 @@ class LibraryScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Consumer<LibraryNotifier>(
-        builder: (context, notifier, child) {
-          final libraryState = notifier.state;
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                : [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9)],
+          ),
+        ),
+        child: Consumer<LibraryNotifier>(
+          builder: (context, notifier, child) {
+            final libraryState = notifier.state;
 
-          if (libraryState.isLoading) {
-            return const LoadingWidget(message: 'Loading library...');
-          }
+            if (libraryState.isLoading) {
+              return const LoadingWidget(message: 'Loading library...');
+            }
 
-          if (libraryState.error != null) {
-            return AppErrorWidget(
-              message: libraryState.error!,
-              onRetry: () => notifier.loadLibrary(),
-            );
-          }
+            if (libraryState.error != null) {
+              return AppErrorWidget(
+                message: libraryState.error!,
+                onRetry: () => notifier.loadLibrary(),
+              );
+            }
 
-          if (libraryState.items.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.library_books,
-              title: 'No PDFs in library',
-              subtitle: 'Add your first PDF to get started',
-              action: FilledButton.icon(
-                onPressed: () => _pickFile(context),
-                icon: const Icon(Icons.add),
-                label: const Text('Add PDF'),
-              ),
-            );
-          }
-
-          return LibraryShelf(
-            items: libraryState.items,
-            onItemOpen: (item) {
-              context.push(AppRouter.pdfViewer, extra: item.filePath);
-            },
-            onItemDelete: (item) async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Remove PDF'),
-                  content: Text('Remove "${item.fileName}" from library?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Remove'),
-                    ),
-                  ],
+            if (libraryState.items.isEmpty) {
+              return EmptyStateWidget(
+                icon: Icons.library_books,
+                title: 'No PDFs in library',
+                subtitle: 'Add your first PDF to get started',
+                action: FilledButton.icon(
+                  onPressed: () => _pickFile(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add PDF'),
                 ),
               );
+            }
 
-              if (confirmed == true && context.mounted) {
-                context.read<LibraryNotifier>().removeItem(item.id);
-              }
-            },
-          );
-        },
+            return LibraryShelf(
+              items: libraryState.items,
+              onItemOpen: (item) {
+                context.push(AppRouter.pdfViewer, extra: item.filePath);
+              },
+              onItemDelete: (item) async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Remove PDF'),
+                    content: Text('Remove "${item.fileName}" from library?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Remove'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true && context.mounted) {
+                  context.read<LibraryNotifier>().removeItem(item.id);
+                }
+              },
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _pickFile(context),
         icon: const Icon(Icons.add),
         label: const Text('Add PDF'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
       ),
     );
   }

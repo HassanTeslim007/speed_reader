@@ -9,66 +9,75 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: Consumer<SettingsNotifier>(
-        builder: (context, notifier, child) {
-          final settings = notifier.state;
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: theme.brightness == Brightness.dark
+                ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                : [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9)],
+          ),
+        ),
+        child: Consumer<SettingsNotifier>(
+          builder: (context, notifier, child) {
+            final settings = notifier.state;
 
-          return ListView(
-            children: [
-              // Appearance Section
-              _SectionHeader(title: 'Appearance'),
-              ListTile(
-                leading: const Icon(Icons.palette),
-                title: const Text('Theme'),
-                subtitle: Text(_getThemeModeLabel(settings.themeMode)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () =>
-                    _showThemeDialog(context, notifier, settings.themeMode),
-              ),
+            return ListView(
+              physics: const BouncingScrollPhysics(),
+              children: [
+                // Appearance Section
+                _SectionHeader(title: 'Appearance'),
+                _PremiumTile(
+                  icon: Icons.palette_outlined,
+                  title: 'Theme Mode',
+                  subtitle: _getThemeModeLabel(settings.themeMode),
+                  onTap: () =>
+                      _showThemeDialog(context, notifier, settings.themeMode),
+                ),
 
-              const Divider(),
+                const SizedBox(height: 8),
 
-              // Reading Section
-              _SectionHeader(title: 'Reading'),
-              SwitchListTile(
-                secondary: const Icon(Icons.save),
-                title: const Text('Auto-save progress'),
-                subtitle: const Text('Automatically save reading position'),
-                value: settings.autoSaveProgress,
-                onChanged: (value) {
-                  notifier.updateAutoSaveProgress(value);
-                },
-              ),
-              SwitchListTile(
-                secondary: const Icon(Icons.numbers),
-                title: const Text('Show page numbers'),
-                subtitle: const Text('Display page numbers in viewer'),
-                value: settings.showPageNumbers,
-                onChanged: (value) {
-                  notifier.updateShowPageNumbers(value);
-                },
-              ),
+                // Reading Section
+                _SectionHeader(title: 'Reading Performance'),
+                _PremiumSwitchTile(
+                  icon: Icons.auto_stories_outlined,
+                  title: 'Auto-save Progress',
+                  subtitle: 'Resume where you left off',
+                  value: settings.autoSaveProgress,
+                  onChanged: (value) => notifier.updateAutoSaveProgress(value),
+                ),
+                _PremiumSwitchTile(
+                  icon: Icons.pin_drop_outlined,
+                  title: 'Visual Overlays',
+                  subtitle: 'Show page numbers in viewer',
+                  value: settings.showPageNumbers,
+                  onChanged: (value) => notifier.updateShowPageNumbers(value),
+                ),
 
-              const Divider(),
+                const SizedBox(height: 8),
 
-              // About Section
-              _SectionHeader(title: 'About'),
-              ListTile(
-                leading: const Icon(Icons.info),
-                title: const Text('Version'),
-                subtitle: const Text(AppConstants.appVersion),
-              ),
-              ListTile(
-                leading: const Icon(Icons.refresh),
-                title: const Text('Reset settings'),
-                subtitle: const Text('Restore default settings'),
-                onTap: () => _showResetDialog(context, notifier),
-              ),
-            ],
-          );
-        },
+                // About Section
+                _SectionHeader(title: 'Application'),
+                _PremiumTile(
+                  icon: Icons.api_outlined,
+                  title: 'Platform Version',
+                  subtitle: AppConstants.appVersion,
+                ),
+                _PremiumTile(
+                  icon: Icons.history_edu_outlined,
+                  title: 'Reset to Factory',
+                  subtitle: 'Restore default configurations',
+                  onTap: () => _showResetDialog(context, notifier),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -167,17 +176,123 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppConstants.spacingMd,
-        AppConstants.spacingLg,
+        24,
         AppConstants.spacingMd,
-        AppConstants.spacingSm,
+        12,
       ),
       child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+        title.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
         ),
       ),
     );
+  }
+}
+
+class _PremiumTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  const _PremiumTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        color: theme.brightness == Brightness.dark
+            ? theme.colorScheme.surfaceContainer
+            : Colors.white,
+        child: ListTile(
+          leading: Icon(icon, color: theme.colorScheme.primary),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(subtitle, style: theme.textTheme.bodySmall),
+          trailing: onTap != null
+              ? const Icon(Icons.chevron_right, size: 20)
+              : null,
+          onTap: onTap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumSwitchTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _PremiumSwitchTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        color: theme.brightness == Brightness.dark
+            ? theme.colorScheme.surfaceContainer
+            : Colors.white,
+        child: SwitchListTile(
+          secondary: Icon(icon, color: theme.colorScheme.primary),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(subtitle, style: theme.textTheme.bodySmall),
+          value: value,
+          onChanged: onChanged,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ... RadioGroup definition below (re-using existing or standard)
+class RadioGroup<T> extends StatelessWidget {
+  final T groupValue;
+  final ValueChanged<T> onChanged;
+  final Widget child;
+
+  const RadioGroup({
+    super.key,
+    required this.groupValue,
+    required this.onChanged,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return child;
   }
 }
