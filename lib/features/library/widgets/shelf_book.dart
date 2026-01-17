@@ -1,18 +1,23 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:speed_reader/core/widgets/pattern_painters.dart';
 import 'package:speed_reader/features/library/models/library_item.dart';
 
 /// A premium widget that represents a book on a shelf.
-/// It shows the spine by default and expands to show the cover on tap.
+/// It shows the spine by default and expands to show the cover when isExpanded is true.
 class ShelfBook extends StatefulWidget {
   final LibraryItem item;
+  final bool isExpanded;
+  final VoidCallback onToggleExpand;
   final VoidCallback onOpen;
   final VoidCallback? onDelete;
 
   const ShelfBook({
     super.key,
     required this.item,
+    required this.isExpanded,
+    required this.onToggleExpand,
     required this.onOpen,
     this.onDelete,
   });
@@ -23,7 +28,6 @@ class ShelfBook extends StatefulWidget {
 
 class _ShelfBookState extends State<ShelfBook>
     with SingleTickerProviderStateMixin {
-  bool _isExpanded = false;
   late AnimationController _controller;
   late Animation<double> _animation;
   late Color _spineColor;
@@ -32,9 +36,7 @@ class _ShelfBookState extends State<ShelfBook>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(
-        milliseconds: 600,
-      ), // Slightly slower for elegance
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
     _animation = CurvedAnimation(
@@ -42,25 +44,30 @@ class _ShelfBookState extends State<ShelfBook>
       curve: Curves.easeOutCubic,
     );
 
+    if (widget.isExpanded) {
+      _controller.value = 1.0;
+    }
+
     final random = math.Random(widget.item.id.hashCode);
     _spineColor = Colors.primaries[random.nextInt(Colors.primaries.length)];
+  }
+
+  @override
+  void didUpdateWidget(ShelfBook oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isExpanded != oldWidget.isExpanded) {
+      if (widget.isExpanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  void _toggleExpand() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-      if (_isExpanded) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    });
   }
 
   @override
@@ -71,8 +78,8 @@ class _ShelfBookState extends State<ShelfBook>
 
     return GestureDetector(
       onTap: () {
-        if (!_isExpanded) {
-          _toggleExpand();
+        if (!widget.isExpanded) {
+          widget.onToggleExpand();
         } else {
           widget.onOpen();
         }
@@ -136,7 +143,6 @@ class _ShelfBookState extends State<ShelfBook>
                                       ).colorScheme.primary,
                                     ),
                                   ),
-                            // Inner Spine Shadow (simulates depth where cover meets spine)
                             Container(
                               width: 8,
                               decoration: BoxDecoration(
@@ -189,21 +195,11 @@ class _ShelfBookState extends State<ShelfBook>
                   ),
                   child: Stack(
                     children: [
-                      // Texture Overlay
-                      Opacity(
-                        opacity: 0.1,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            image: DecorationImage(
-                              image: NetworkImage(
-                                'https://www.transparenttextures.com/patterns/leather.png',
-                              ),
-                              repeat: ImageRepeat.repeat,
-                            ),
-                          ),
-                        ),
+                      // Texture Overlay (Procedural)
+                      CustomPaint(
+                        size: Size.infinite,
+                        painter: LeatherPainter(color: Colors.white),
                       ),
-                      // Vertical text
                       Center(
                         child: RotatedBox(
                           quarterTurns: 3,
@@ -230,21 +226,19 @@ class _ShelfBookState extends State<ShelfBook>
                           ),
                         ),
                       ),
-                      // Gilded Decorative lines
                       _buildSpineLine(top: 25),
                       _buildSpineLine(bottom: 25),
                     ],
                   ),
                 ),
 
-                // Close & Delete Buttons
-                if (_isExpanded) ...[
+                if (_animation.value > 0.8) ...[
                   Positioned(
                     top: 8,
                     right: 8,
                     child: _CircleIconButton(
                       icon: Icons.close,
-                      onTap: _toggleExpand,
+                      onTap: widget.onToggleExpand,
                     ),
                   ),
                   if (widget.onDelete != null)

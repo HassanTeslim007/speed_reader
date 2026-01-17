@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:speed_reader/features/pdf_viewer/models/search_result.dart';
 import 'package:speed_reader/features/pdf_viewer/models/search_state.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart' as syncfusion_pdf;

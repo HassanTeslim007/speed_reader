@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:speed_reader/core/constants/app_constants.dart';
+import 'package:speed_reader/core/widgets/pattern_painters.dart';
 import 'package:speed_reader/features/library/models/library_item.dart';
 import 'package:speed_reader/features/library/widgets/shelf_book.dart';
 
 /// A premium widget that displays library items on high-fidelity wooden shelves.
-class LibraryShelf extends StatelessWidget {
+/// Dynamically calculates shelves based on available width.
+class LibraryShelf extends StatefulWidget {
   final List<LibraryItem> items;
   final Function(LibraryItem) onItemOpen;
   final Function(LibraryItem)? onItemDelete;
@@ -17,26 +19,51 @@ class LibraryShelf extends StatelessWidget {
   });
 
   @override
+  State<LibraryShelf> createState() => _LibraryShelfState();
+}
+
+class _LibraryShelfState extends State<LibraryShelf> {
+  String? _expandedItemId;
+
+  void _handleToggleExpand(String itemId) {
+    setState(() {
+      if (_expandedItemId == itemId) {
+        _expandedItemId = null;
+      } else {
+        _expandedItemId = itemId;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacingMd,
-        vertical: AppConstants.spacingLg,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: _buildShelves(context),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppConstants.spacingMd,
+            vertical: AppConstants.spacingLg,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _buildShelves(context, constraints.maxWidth),
+          ),
+        );
+      },
     );
   }
 
-  List<Widget> _buildShelves(BuildContext context) {
-    const int itemsPerShelf = 8;
-    final List<Widget> shelves = [];
+  List<Widget> _buildShelves(BuildContext context, double maxWidth) {
+    const double approxBookWidth = 46.0;
+    final double availableWidth = maxWidth - (AppConstants.spacingMd * 2);
 
-    for (int i = 0; i < items.length; i += itemsPerShelf) {
-      final shelfItems = items.skip(i).take(itemsPerShelf).toList();
+    int itemsPerShelf = (availableWidth / approxBookWidth).floor();
+    if (itemsPerShelf < 1) itemsPerShelf = 1;
+
+    final List<Widget> shelves = [];
+    for (int i = 0; i < widget.items.length; i += itemsPerShelf) {
+      final shelfItems = widget.items.skip(i).take(itemsPerShelf).toList();
       shelves.add(_buildShelfRow(context, shelfItems));
       shelves.add(const SizedBox(height: 50));
     }
@@ -48,11 +75,9 @@ class LibraryShelf extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Books with Ambient Occlusion shadow underneath
         Stack(
           alignment: Alignment.bottomCenter,
           children: [
-            // Shelf shadow on the wall behind books
             Container(
               height: 40,
               width: double.infinity,
@@ -70,30 +95,27 @@ class LibraryShelf extends StatelessWidget {
 
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: shelfItems.map((item) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: ShelfBook(
-                        item: item,
-                        onOpen: () => onItemOpen(item),
-                        onDelete: onItemDelete != null
-                            ? () => onItemDelete!(item)
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: shelfItems.map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ShelfBook(
+                      item: item,
+                      isExpanded: _expandedItemId == item.id,
+                      onToggleExpand: () => _handleToggleExpand(item.id),
+                      onOpen: () => widget.onItemOpen(item),
+                      onDelete: widget.onItemDelete != null
+                          ? () => widget.onItemDelete!(item)
+                          : null,
+                    ),
+                  );
+                }).toList(),
               ),
             ),
           ],
         ),
 
-        // The Premium Shelf Board
         Container(
           width: double.infinity,
           height: 16,
@@ -102,13 +124,11 @@ class LibraryShelf extends StatelessWidget {
               bottom: Radius.circular(4),
             ),
             boxShadow: [
-              // Bottom shadow
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.5),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
-              // Side depth
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 2,
@@ -122,34 +142,20 @@ class LibraryShelf extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                // Base Wood Gradient
                 Container(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        const Color(0xFF5D4037), // Lighter brown top edge
-                        const Color(0xFF3E2723), // Deep brown bottom
-                      ],
+                      colors: [Color(0xFF5D4037), Color(0xFF3E2723)],
                     ),
                   ),
                 ),
-                // Wood Grain Texture (Overlay)
-                Opacity(
-                  opacity: 0.1,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: NetworkImage(
-                          'https://www.transparenttextures.com/patterns/wood-pattern.png',
-                        ),
-                        repeat: ImageRepeat.repeat,
-                      ),
-                    ),
-                  ),
+                // Wood Grain Texture (Procedural)
+                CustomPaint(
+                  size: Size.infinite,
+                  painter: WoodGrainPainter(color: Colors.white),
                 ),
-                // Edge Highlight
                 Container(
                   height: 1.5,
                   width: double.infinity,

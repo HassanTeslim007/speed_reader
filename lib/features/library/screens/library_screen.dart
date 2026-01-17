@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:speed_reader/core/constants/app_constants.dart';
 import 'package:speed_reader/core/router/app_router.dart';
 import 'package:speed_reader/core/widgets/common_widgets.dart';
+import 'package:speed_reader/core/widgets/pattern_painters.dart';
 import 'package:speed_reader/features/library/providers/library_provider.dart';
 import 'package:speed_reader/features/library/widgets/library_shelf.dart';
 
@@ -46,6 +47,7 @@ class LibraryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
@@ -65,64 +67,84 @@ class LibraryScreen extends StatelessWidget {
                 : [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9)],
           ),
         ),
-        child: Consumer<LibraryNotifier>(
-          builder: (context, notifier, child) {
-            final libraryState = notifier.state;
+        child: Stack(
+          children: [
+            // Subtle Pattern Overlay (Procedural)
+            CustomPaint(
+              size: Size.infinite,
+              painter: GeometricGridPainter(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight,
+              ),
+              child: Consumer<LibraryNotifier>(
+                builder: (context, notifier, child) {
+                  final libraryState = notifier.state;
 
-            if (libraryState.isLoading) {
-              return const LoadingWidget(message: 'Loading library...');
-            }
+                  if (libraryState.isLoading) {
+                    return const LoadingWidget(message: 'Loading library...');
+                  }
 
-            if (libraryState.error != null) {
-              return AppErrorWidget(
-                message: libraryState.error!,
-                onRetry: () => notifier.loadLibrary(),
-              );
-            }
+                  if (libraryState.error != null) {
+                    return AppErrorWidget(
+                      message: libraryState.error!,
+                      onRetry: () => notifier.loadLibrary(),
+                    );
+                  }
 
-            if (libraryState.items.isEmpty) {
-              return EmptyStateWidget(
-                icon: Icons.library_books,
-                title: 'No PDFs in library',
-                subtitle: 'Add your first PDF to get started',
-                action: FilledButton.icon(
-                  onPressed: () => _pickFile(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add PDF'),
-                ),
-              );
-            }
-
-            return LibraryShelf(
-              items: libraryState.items,
-              onItemOpen: (item) {
-                context.push(AppRouter.pdfViewer, extra: item.filePath);
-              },
-              onItemDelete: (item) async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Remove PDF'),
-                    content: Text('Remove "${item.fileName}" from library?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
+                  if (libraryState.items.isEmpty) {
+                    return EmptyStateWidget(
+                      icon: Icons.library_books,
+                      title: 'No PDFs in library',
+                      subtitle: 'Add your first PDF to get started',
+                      action: FilledButton.icon(
+                        onPressed: () => _pickFile(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add PDF'),
                       ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Remove'),
-                      ),
-                    ],
-                  ),
-                );
+                    );
+                  }
 
-                if (confirmed == true && context.mounted) {
-                  context.read<LibraryNotifier>().removeItem(item.id);
-                }
-              },
-            );
-          },
+                  return LibraryShelf(
+                    items: libraryState.items,
+                    onItemOpen: (item) {
+                      context.push(AppRouter.pdfViewer, extra: item.filePath);
+                    },
+                    onItemDelete: (item) async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Remove PDF'),
+                          content: Text(
+                            'Remove "${item.fileName}" from library?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Remove'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirmed == true && context.mounted) {
+                        context.read<LibraryNotifier>().removeItem(item.id);
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(

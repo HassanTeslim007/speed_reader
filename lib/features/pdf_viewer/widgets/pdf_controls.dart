@@ -94,15 +94,6 @@ class PdfControls extends StatelessWidget {
                   onPressed: () => notifier.toggleFullscreen(),
                   isHighlighted: viewerState.isFullscreen,
                 ),
-
-                // RSVP Mode Shortcut
-                const SizedBox(width: 8),
-                _ControlButton(
-                  icon: Icons.speed,
-                  onPressed: () {
-                    // This is handled in the screen
-                  },
-                ),
               ],
             ),
           ),

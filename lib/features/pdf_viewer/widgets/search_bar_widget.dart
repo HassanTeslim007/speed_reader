@@ -56,7 +56,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
         child: GlassContainer(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           borderRadius: 20,
-          opacity: theme.brightness == Brightness.dark ? 0.2 : 0.4,
+          opacity: theme.brightness == Brightness.dark ? 0.7 : 0.4,
           child: Consumer<SearchProvider>(
             builder: (context, searchProvider, child) {
               final state = searchProvider.state;
@@ -73,13 +73,21 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                     child: TextField(
                       controller: _controller,
                       focusNode: _focusNode,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Search context...',
                         border: InputBorder.none,
                         isDense: true,
-                        hintStyle: TextStyle(fontSize: 14),
+                        hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.brightness == Brightness.dark
+                              ? Colors.white.withValues(alpha: 0.5)
+                              : Colors.black.withValues(alpha: 0.4),
+                        ),
                       ),
-                      style: const TextStyle(fontSize: 14),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                      ),
                       onChanged: (value) {
                         searchProvider.search(value);
                       },

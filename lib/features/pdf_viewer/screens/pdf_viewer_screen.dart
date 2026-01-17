@@ -360,16 +360,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         return Stack(
           children: [
             Scaffold(
+              extendBodyBehindAppBar: true,
               appBar: AppBar(
                 title: Text(
                   'Page ${viewerState.currentPage} of ${viewerState.totalPages}',
                 ),
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.fullscreen),
-                    tooltip: 'Fullscreen',
-                    onPressed: () => notifier.toggleFullscreen(),
-                  ),
                   IconButton(
                     icon: const Icon(Icons.search),
                     onPressed: () {
@@ -454,12 +450,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                             if (_isSearchVisible)
                               Align(
                                 alignment: Alignment.topCenter,
-                                child: SearchBarWidget(
-                                  onClose: () {
-                                    setState(() {
-                                      _isSearchVisible = false;
-                                    });
-                                  },
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    top:
+                                        MediaQuery.of(context).padding.top +
+                                        kToolbarHeight +
+                                        8,
+                                  ),
+                                  child: SearchBarWidget(
+                                    onClose: () {
+                                      setState(() {
+                                        _isSearchVisible = false;
+                                      });
+                                    },
+                                  ),
                                 ),
                               ),
 

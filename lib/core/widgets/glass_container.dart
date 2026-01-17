@@ -38,8 +38,8 @@ class GlassContainer extends StatelessWidget {
     final glassColor =
         color ??
         (theme.brightness == Brightness.dark
-            ? Colors.white.withValues(alpha: opacity)
-            : Colors.black.withValues(alpha: opacity));
+            ? Colors.black.withValues(alpha: opacity)
+            : Colors.white.withValues(alpha: opacity));
 
     return Container(
       width: width,
