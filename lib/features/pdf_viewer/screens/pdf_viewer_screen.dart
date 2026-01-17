@@ -82,13 +82,23 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     }
 
     try {
-      // PdfController expects a Future<PdfDocument>
-      final controller = PdfController(
-        document: PdfDocument.openFile(widget.filePath!),
-      );
+      final file = File(widget.filePath!);
+      if (!await file.exists()) {
+        setState(() {
+          _error =
+              'The file could not be found. It may have been moved or deleted.';
+          _isLoading = false;
+        });
+        return;
+      }
 
-      // Wait for the document to load to get page count
-      final document = await PdfDocument.openFile(widget.filePath!);
+      // Open the document once and reuse the future
+      final documentFuture = PdfDocument.openFile(widget.filePath!);
+
+      final controller = PdfController(document: documentFuture);
+
+      // Wait for the same future to get metadata
+      final document = await documentFuture;
 
       setState(() {
         _pdfController = controller;

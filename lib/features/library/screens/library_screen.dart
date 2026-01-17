@@ -26,8 +26,8 @@ class LibraryScreen extends StatelessWidget {
           final item = await context.read<LibraryNotifier>().addItem(filePath);
 
           if (item != null && context.mounted) {
-            // Navigate to PDF viewer
-            context.push(AppRouter.pdfViewer, extra: filePath);
+            // Navigate to PDF viewer using the permanent library path
+            context.push(AppRouter.pdfViewer, extra: item.filePath);
           } else if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Failed to add PDF to library')),

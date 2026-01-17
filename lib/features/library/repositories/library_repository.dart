@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -30,17 +31,25 @@ class LibraryRepository {
   }
 
   /// Add a new library item
-  Future<LibraryItem?> addLibraryItem(String filePath) async {
+  Future<LibraryItem?> addLibraryItem(String sourcePath) async {
     try {
-      // Check if file exists
-      final file = File(filePath);
-      if (!await file.exists()) {
-        return null;
+      final sourceFile = File(sourcePath);
+      if (!await sourceFile.exists()) return null;
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final libraryDir = Directory('${appDir.path}/library');
+      if (!await libraryDir.exists()) {
+        await libraryDir.create(recursive: true);
       }
 
-      // Get PDF info
-      final document = await PdfDocument.openFile(filePath);
-      final fileName = filePath.split('/').last;
+      // Copy to permanent location
+      final fileId = _uuid.v4();
+      final permanentPath = '${libraryDir.path}/$fileId.pdf';
+      await sourceFile.copy(permanentPath);
+
+      // Get PDF info from the permanent copy
+      final document = await PdfDocument.openFile(permanentPath);
+      final fileName = sourcePath.split('/').last;
 
       // Generate thumbnail
       String? thumbnailPath;
@@ -54,24 +63,23 @@ class LibraryRepository {
         );
 
         if (pageImage != null) {
-          final directory = await getApplicationDocumentsDirectory();
-          final thumbnailsDir = Directory('${directory.path}/thumbnails');
+          final thumbnailsDir = Directory('${appDir.path}/thumbnails');
           if (!await thumbnailsDir.exists()) {
             await thumbnailsDir.create(recursive: true);
           }
 
-          final thumbFile = File('${thumbnailsDir.path}/${_uuid.v4()}.jpg');
+          final thumbFile = File('${thumbnailsDir.path}/$fileId.jpg');
           await thumbFile.writeAsBytes(pageImage.bytes);
           thumbnailPath = thumbFile.path;
         }
         await page.close();
       } catch (e) {
-        // Thumbnail generation failed, proceed without it
+        // Thumbnail generation failed
       }
 
       final item = LibraryItem(
-        id: _uuid.v4(),
-        filePath: filePath,
+        id: fileId,
+        filePath: permanentPath,
         fileName: fileName,
         totalPages: document.pagesCount,
         addedDate: DateTime.now(),
@@ -82,17 +90,12 @@ class LibraryRepository {
 
       // Save to library
       final items = getLibraryItems();
-
-      // Check if already exists
-      if (items.any((i) => i.filePath == filePath)) {
-        return items.firstWhere((i) => i.filePath == filePath);
-      }
-
       items.add(item);
       await _saveLibraryItems(items);
 
       return item;
     } catch (e) {
+      debugPrint('Error adding to library: $e');
       return null;
     }
   }
@@ -111,8 +114,27 @@ class LibraryRepository {
   /// Remove library item
   Future<void> removeLibraryItem(String id) async {
     final items = getLibraryItems();
-    items.removeWhere((item) => item.id == id);
-    await _saveLibraryItems(items);
+    final index = items.indexWhere((item) => item.id == id);
+
+    if (index != -1) {
+      final item = items[index];
+
+      // Delete files
+      try {
+        final pdfFile = File(item.filePath);
+        if (await pdfFile.exists()) await pdfFile.delete();
+
+        if (item.thumbnailPath != null) {
+          final thumbFile = File(item.thumbnailPath!);
+          if (await thumbFile.exists()) await thumbFile.delete();
+        }
+      } catch (e) {
+        debugPrint('Error deleting files: $e');
+      }
+
+      items.removeAt(index);
+      await _saveLibraryItems(items);
+    }
   }
 
   /// Update last opened date
