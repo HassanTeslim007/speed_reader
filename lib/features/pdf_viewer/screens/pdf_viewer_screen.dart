@@ -14,6 +14,8 @@ import 'package:speed_reader/features/pdf_viewer/providers/search_provider.dart'
 import 'package:speed_reader/features/pdf_viewer/widgets/pdf_controls.dart';
 import 'package:speed_reader/features/pdf_viewer/widgets/search_bar_widget.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart' as syncfusion_pdf;
+import 'package:speed_reader/features/bookmarks/providers/bookmark_provider.dart';
+import 'package:speed_reader/features/bookmarks/widgets/bookmarks_drawer_widget.dart';
 
 /// Isolate function for extracting text from PDF
 /// Must be top-level or static to work with compute
@@ -100,6 +102,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           documentId,
           document.pagesCount,
         );
+
+        // Load bookmarks
+        context.read<BookmarkProvider>().loadBookmarks(documentId);
 
         // Jump to saved page after a short delay to ensure controller is ready
         final savedPage = context.read<PdfViewerNotifier>().state.currentPage;
@@ -387,14 +392,36 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                     tooltip: 'Speed Reader (RSVP)',
                     onPressed: () => _launchRsvpMode(context),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.bookmark_border),
-                    onPressed: () {
-                      // TODO: Implement bookmark functionality
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Bookmarks coming soon!')),
+                  Consumer<BookmarkProvider>(
+                    builder: (context, bookmarkProvider, child) {
+                      final documentId = widget.filePath!.hashCode.toString();
+                      final isBookmarked = bookmarkProvider.isPageBookmarked(
+                        viewerState.currentPage,
+                      );
+
+                      return IconButton(
+                        icon: Icon(
+                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                          color: isBookmarked
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                        ),
+                        tooltip: isBookmarked
+                            ? 'Remove Bookmark'
+                            : 'Add Bookmark',
+                        onPressed: () => bookmarkProvider.toggleBookmark(
+                          documentId,
+                          viewerState.currentPage,
+                        ),
                       );
                     },
+                  ),
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.bookmarks_outlined),
+                      tooltip: 'View Bookmarks',
+                      onPressed: () => Scaffold.of(context).openEndDrawer(),
+                    ),
                   ),
                 ],
               ),
@@ -468,6 +495,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                         ),
                     ],
                   );
+                },
+              ),
+              endDrawer: BookmarksDrawerWidget(
+                documentId: widget.filePath!.hashCode.toString(),
+                onJumpToPage: (page) {
+                  _pdfController?.jumpToPage(page);
                 },
               ),
             ),

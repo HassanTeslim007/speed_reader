@@ -11,6 +11,8 @@ import 'package:speed_reader/features/pdf_viewer/repositories/pdf_repository.dar
 import 'package:speed_reader/features/settings/providers/settings_provider.dart';
 import 'package:speed_reader/features/settings/repositories/settings_repository.dart';
 import 'package:speed_reader/features/speed_reader/providers/rsvp_provider.dart';
+import 'package:speed_reader/features/bookmarks/repositories/bookmark_repository.dart';
+import 'package:speed_reader/features/bookmarks/providers/bookmark_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +42,9 @@ class MainApp extends StatelessWidget {
         Provider<SettingsRepository>(
           create: (_) => SettingsRepository(sharedPreferences),
         ),
+        Provider<BookmarkRepository>(
+          create: (_) => BookmarkRepository(sharedPreferences),
+        ),
 
         // Notifiers
         ChangeNotifierProvider<PdfViewerNotifier>(
@@ -55,6 +60,10 @@ class MainApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<RsvpProvider>(create: (_) => RsvpProvider()),
         ChangeNotifierProvider<SearchProvider>(create: (_) => SearchProvider()),
+        ChangeNotifierProvider<BookmarkProvider>(
+          create: (context) =>
+              BookmarkProvider(context.read<BookmarkRepository>()),
+        ),
       ],
       child: Consumer<SettingsNotifier>(
         builder: (context, settingsNotifier, child) {
