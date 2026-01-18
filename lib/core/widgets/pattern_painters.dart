@@ -85,3 +85,88 @@ class GeometricGridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+class SpeedLogoPainter extends CustomPainter {
+  final Color color;
+  final double progress; // 0.0 to 1.0 for animation
+
+  SpeedLogoPainter({required this.color, this.progress = 1.0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final bookWidth = size.width * 0.35;
+    final bookHeight = size.height * 0.45;
+
+    // Center spine
+    canvas.drawLine(
+      Offset(center.dx, center.dy - bookHeight / 2 + 5),
+      Offset(center.dx, center.dy + bookHeight / 2 - 5),
+      paint,
+    );
+
+    // Left page
+    final leftPath = Path();
+    leftPath.moveTo(center.dx, center.dy - bookHeight / 2 + 5);
+    leftPath.quadraticBezierTo(
+      center.dx - bookWidth / 2,
+      center.dy - bookHeight / 2 - 10,
+      center.dx - bookWidth,
+      center.dy - bookHeight / 2 + 5,
+    );
+    leftPath.lineTo(center.dx - bookWidth, center.dy + bookHeight / 2 - 5);
+    leftPath.quadraticBezierTo(
+      center.dx - bookWidth / 2,
+      center.dy + bookHeight / 2 - 20,
+      center.dx,
+      center.dy + bookHeight / 2 - 5,
+    );
+    canvas.drawPath(leftPath, paint);
+
+    // Right page
+    final rightPath = Path();
+    rightPath.moveTo(center.dx, center.dy - bookHeight / 2 + 5);
+    rightPath.quadraticBezierTo(
+      center.dx + bookWidth / 2,
+      center.dy - bookHeight / 2 - 10,
+      center.dx + bookWidth,
+      center.dy - bookHeight / 2 + 5,
+    );
+    rightPath.lineTo(center.dx + bookWidth, center.dy + bookHeight / 2 - 5);
+    rightPath.quadraticBezierTo(
+      center.dx + bookWidth / 2,
+      center.dy + bookHeight / 2 - 20,
+      center.dx,
+      center.dy + bookHeight / 2 - 5,
+    );
+    canvas.drawPath(rightPath, paint);
+
+    // Speed lines (animated)
+    final linesPaint = Paint()
+      ..color = color.withValues(alpha: progress)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    for (var i = 0; i < 3; i++) {
+      final yOffset = -25.0 + (i * 25.0);
+      final length = 50.0 * progress;
+      final startX = center.dx - bookWidth - 15.0 - (i * 12.0);
+      canvas.drawLine(
+        Offset(startX, center.dy + yOffset),
+        Offset(startX - length, center.dy + yOffset),
+        linesPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant SpeedLogoPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.color != color;
+}
