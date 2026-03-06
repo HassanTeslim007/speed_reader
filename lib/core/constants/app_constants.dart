@@ -34,5 +34,5 @@ class AppConstants {
   static const String keyReadingProgress = 'reading_progress_';
 
   // Supported File Extensions
-  static const List<String> supportedExtensions = ['pdf'];
+  static const List<String> supportedExtensions = ['pdf', 'txt', 'html'];
 }

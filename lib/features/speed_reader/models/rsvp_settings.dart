@@ -10,6 +10,7 @@ class RsvpSettings extends Equatable {
   final Color highlightColor;
   final bool showFocusGuide;
   final bool highlightORP; // Optimal Recognition Point
+  final int chunkSize; // Number of words to display at once
 
   const RsvpSettings({
     this.wordsPerMinute = 300,
@@ -19,6 +20,7 @@ class RsvpSettings extends Equatable {
     this.highlightColor = Colors.red,
     this.showFocusGuide = true,
     this.highlightORP = true,
+    this.chunkSize = 1,
   });
 
   RsvpSettings copyWith({
@@ -29,6 +31,7 @@ class RsvpSettings extends Equatable {
     Color? highlightColor,
     bool? showFocusGuide,
     bool? highlightORP,
+    int? chunkSize,
   }) {
     return RsvpSettings(
       wordsPerMinute: wordsPerMinute ?? this.wordsPerMinute,
@@ -38,11 +41,12 @@ class RsvpSettings extends Equatable {
       highlightColor: highlightColor ?? this.highlightColor,
       showFocusGuide: showFocusGuide ?? this.showFocusGuide,
       highlightORP: highlightORP ?? this.highlightORP,
+      chunkSize: chunkSize ?? this.chunkSize,
     );
   }
 
-  /// Get delay between words in milliseconds
-  int get delayMs => (60000 / wordsPerMinute).round();
+  /// Get delay between chunks in milliseconds
+  int get delayMs => (60000 / (wordsPerMinute / chunkSize)).round();
 
   @override
   List<Object?> get props => [
@@ -53,5 +57,6 @@ class RsvpSettings extends Equatable {
     highlightColor,
     showFocusGuide,
     highlightORP,
+    chunkSize,
   ];
 }

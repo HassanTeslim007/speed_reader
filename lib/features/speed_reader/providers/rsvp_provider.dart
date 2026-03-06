@@ -17,7 +17,11 @@ class RsvpProvider extends ChangeNotifier {
   RsvpPlaybackState get playbackState => _playbackState;
   List<String> get words => _words;
   int get currentWordIndex => _currentWordIndex;
-  String get currentWord => _words.isEmpty ? '' : _words[_currentWordIndex];
+  String get currentWord {
+    if (_words.isEmpty) return '';
+    final endIndex = (_currentWordIndex + _settings.chunkSize).clamp(0, _words.length);
+    return _words.sublist(_currentWordIndex, endIndex).join(' ');
+  }
   int get totalWords => _words.length;
   double get progress =>
       _words.isEmpty ? 0.0 : _currentWordIndex / _words.length;
@@ -72,8 +76,8 @@ class RsvpProvider extends ChangeNotifier {
 
   /// Move to next word
   void _nextWord() {
-    if (_currentWordIndex < _words.length - 1) {
-      _currentWordIndex++;
+    if (_currentWordIndex + _settings.chunkSize < _words.length) {
+      _currentWordIndex += _settings.chunkSize;
       notifyListeners();
     } else {
       // Reached end
@@ -84,7 +88,7 @@ class RsvpProvider extends ChangeNotifier {
   /// Jump to specific word index
   void jumpToWord(int index) {
     if (index >= 0 && index < _words.length) {
-      _currentWordIndex = index;
+      _currentWordIndex = index - (index % _settings.chunkSize);
       notifyListeners();
     }
   }

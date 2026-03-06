@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -9,9 +10,83 @@ import 'package:speed_reader/core/widgets/pattern_painters.dart';
 import 'package:speed_reader/features/library/providers/library_provider.dart';
 import 'package:speed_reader/features/library/widgets/library_shelf.dart';
 
+import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' show parse;
+import 'package:path_provider/path_provider.dart';
+
 /// Library Screen - Main screen showing all PDFs
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
+
+  Future<void> _addFromWeb(BuildContext context) async {
+    final urlController = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Web Article'),
+        content: TextField(
+          controller: urlController,
+          decoration: const InputDecoration(hintText: 'https://example.com/article'),
+          keyboardType: TextInputType.url,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, urlController.text), child: const Text('Add')),
+        ],
+      ),
+    );
+
+    if (url != null && url.isNotEmpty) {
+      if (!context.mounted) return;
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      try {
+        final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
+        final response = await http.get(uri);
+        if (response.statusCode == 200) {
+          final document = parse(response.body);
+          final docTitle = document.head?.querySelector('title')?.text ?? '';
+          final title = docTitle.isNotEmpty ? docTitle : uri.host;
+          final articleElement = document.querySelector('article') ?? document.body;
+          
+          // Remove unwanted script/style tags before extracting text
+          if (articleElement != null) {
+            final unwantedTags = ['script', 'style', 'noscript', 'meta', 'link', 'nav', 'header', 'footer', 'aside'];
+            for (final tag in unwantedTags) {
+              articleElement.querySelectorAll(tag).forEach((e) => e.remove());
+            }
+          }
+
+          String textContent = articleElement?.text ?? '';
+          textContent = textContent.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+          final dir = await getTemporaryDirectory();
+          final tempFile = File('${dir.path}/${title.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.txt');
+          await tempFile.writeAsString(textContent);
+
+          if (context.mounted) {
+            Navigator.pop(context); // Close loading dialog
+            final item = await context.read<LibraryNotifier>().addItem(tempFile.path);
+            if (item != null && context.mounted) {
+              context.push(AppRouter.textReader, extra: item.filePath);
+            }
+          }
+        } else {
+          throw Exception('Failed to load: HTTP ${response.statusCode}');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          Navigator.pop(context); // Close loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+        }
+      }
+    }
+  }
 
   Future<void> _pickFile(BuildContext context) async {
     try {
@@ -26,11 +101,16 @@ class LibraryScreen extends StatelessWidget {
           final item = await context.read<LibraryNotifier>().addItem(filePath);
 
           if (item != null && context.mounted) {
-            // Navigate to PDF viewer using the permanent library path
-            context.push(AppRouter.pdfViewer, extra: item.filePath);
+            // Check if it's text or pdf and route properly
+            final ext = item.filePath.split('.').last.toLowerCase();
+            if (ext == 'txt' || ext == 'html') {
+              context.push(AppRouter.textReader, extra: item.filePath);
+            } else {
+              context.push(AppRouter.pdfViewer, extra: item.filePath);
+            }
           } else if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to add PDF to library')),
+              const SnackBar(content: Text('Failed to add document to library')),
             );
           }
         }
@@ -51,6 +131,11 @@ class LibraryScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.language),
+            tooltip: 'Add Web Article',
+            onPressed: () => _addFromWeb(context),
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push(AppRouter.settings),
@@ -113,7 +198,12 @@ class LibraryScreen extends StatelessWidget {
                   return LibraryShelf(
                     items: libraryState.items,
                     onItemOpen: (item) {
-                      context.push(AppRouter.pdfViewer, extra: item.filePath);
+                      final ext = item.filePath.split('.').last.toLowerCase();
+                      if (ext == 'txt' || ext == 'html') {
+                        context.push(AppRouter.textReader, extra: item.filePath);
+                      } else {
+                        context.push(AppRouter.pdfViewer, extra: item.filePath);
+                      }
                     },
                     onItemDelete: (item) async {
                       final confirmed = await showDialog<bool>(

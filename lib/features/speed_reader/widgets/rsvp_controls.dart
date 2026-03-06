@@ -189,6 +189,24 @@ class RsvpControls extends StatelessWidget {
                     );
                   },
                 ),
+
+                // Chunk Size slider
+                ListTile(
+                  leading: const Icon(Icons.view_agenda),
+                  title: const Text('Words per chunk'),
+                  subtitle: Slider(
+                    value: provider.settings.chunkSize.toDouble(),
+                    min: 1,
+                    max: 5,
+                    divisions: 4,
+                    label: provider.settings.chunkSize.toString(),
+                    onChanged: (value) {
+                      provider.updateSettings(
+                        provider.settings.copyWith(chunkSize: value.round()),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),

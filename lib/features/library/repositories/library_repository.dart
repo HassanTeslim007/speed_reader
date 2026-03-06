@@ -44,49 +44,54 @@ class LibraryRepository {
 
       // Copy to permanent location
       final fileId = _uuid.v4();
-      final permanentPath = '${libraryDir.path}/$fileId.pdf';
+      final ext = sourcePath.split('.').last.toLowerCase();
+      final permanentPath = '${libraryDir.path}/$fileId.$ext';
       await sourceFile.copy(permanentPath);
 
-      // Get PDF info from the permanent copy
-      final document = await PdfDocument.openFile(permanentPath);
       final fileName = sourcePath.split('/').last;
-
-      // Generate thumbnail
+      int pagesCount = 1;
       String? thumbnailPath;
-      try {
-        final page = await document.getPage(1);
-        final pageImage = await page.render(
-          width: page.width * 0.5,
-          height: page.height * 0.5,
-          format: PdfPageImageFormat.jpeg,
-          quality: 50,
-        );
 
-        if (pageImage != null) {
-          final thumbnailsDir = Directory('${appDir.path}/thumbnails');
-          if (!await thumbnailsDir.exists()) {
-            await thumbnailsDir.create(recursive: true);
+      if (ext == 'pdf') {
+        // Get PDF info from the permanent copy
+        final document = await PdfDocument.openFile(permanentPath);
+        pagesCount = document.pagesCount;
+
+        // Generate thumbnail
+        try {
+          final page = await document.getPage(1);
+          final pageImage = await page.render(
+            width: page.width * 0.5,
+            height: page.height * 0.5,
+            format: PdfPageImageFormat.jpeg,
+            quality: 50,
+          );
+
+          if (pageImage != null) {
+            final thumbnailsDir = Directory('${appDir.path}/thumbnails');
+            if (!await thumbnailsDir.exists()) {
+              await thumbnailsDir.create(recursive: true);
+            }
+
+            final thumbFile = File('${thumbnailsDir.path}/$fileId.jpg');
+            await thumbFile.writeAsBytes(pageImage.bytes);
+            thumbnailPath = thumbFile.path;
           }
-
-          final thumbFile = File('${thumbnailsDir.path}/$fileId.jpg');
-          await thumbFile.writeAsBytes(pageImage.bytes);
-          thumbnailPath = thumbFile.path;
+          await page.close();
+        } catch (e) {
+          // Thumbnail generation failed
         }
-        await page.close();
-      } catch (e) {
-        // Thumbnail generation failed
+        await document.close();
       }
 
       final item = LibraryItem(
         id: fileId,
         filePath: permanentPath,
         fileName: fileName,
-        totalPages: document.pagesCount,
+        totalPages: pagesCount,
         addedDate: DateTime.now(),
         thumbnailPath: thumbnailPath,
       );
-
-      await document.close();
 
       // Save to library
       final items = getLibraryItems();
@@ -151,8 +156,10 @@ class LibraryRepository {
     }
   }
 
-  /// Generate thumbnail for an existing item
   Future<String?> generateThumbnail(String filePath) async {
+    final ext = filePath.split('.').last.toLowerCase();
+    if (ext != 'pdf') return null;
+
     try {
       final document = await PdfDocument.openFile(filePath);
       final page = await document.getPage(1);

@@ -7,7 +7,6 @@ import 'package:speed_reader/features/speed_reader/providers/rsvp_provider.dart'
 class RsvpDisplay extends StatelessWidget {
   const RsvpDisplay({super.key});
 
-  /// Find the Optimal Recognition Point (ORP) - usually around 1/3 from start
   int _findORP(String word) {
     if (word.length <= 1) return 0;
     return (word.length * 0.35).round();
@@ -32,28 +31,33 @@ class RsvpDisplay extends StatelessWidget {
           );
         }
 
-        final orpIndex = _findORP(word);
-
         return Container(
           color: settings.backgroundColor,
           child: Stack(
             children: [
               // Focus guide (crosshair)
               if (settings.showFocusGuide)
-                Center(
-                  child: CustomPaint(
-                    size: const Size(200, 200),
-                    painter: _FocusGuidePainter(
-                      color: settings.textColor.withValues(alpha: 0.2),
+                ...[
+                  // Since we might have multiple words, relying on a static crosshair is still somewhat helpful,
+                  // but we center it in the display.
+                  Center(
+                    child: CustomPaint(
+                      size: const Size(200, 200),
+                      painter: _FocusGuidePainter(
+                        color: settings.textColor.withValues(alpha: 0.2),
+                      ),
                     ),
                   ),
-                ),
+                ],
 
               // Word display
               Center(
-                child: settings.highlightORP
-                    ? _buildWordWithORP(word, orpIndex, settings)
-                    : _buildSimpleWord(word, settings),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: settings.highlightORP
+                      ? _buildChunkWithORP(word, settings)
+                      : _buildSimpleWord(word, settings),
+                ),
               ),
 
               // Progress indicator
@@ -93,6 +97,7 @@ class RsvpDisplay extends StatelessWidget {
   Widget _buildSimpleWord(String word, RsvpSettings settings) {
     return Text(
       word,
+      textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: settings.fontSize,
         color: settings.textColor,
@@ -102,37 +107,55 @@ class RsvpDisplay extends StatelessWidget {
     );
   }
 
-  Widget _buildWordWithORP(String word, int orpIndex, RsvpSettings settings) {
-    final before = word.substring(0, orpIndex);
-    final orp = word[orpIndex];
-    final after = orpIndex < word.length - 1
-        ? word.substring(orpIndex + 1)
-        : '';
+  Widget _buildChunkWithORP(String chunk, RsvpSettings settings) {
+    final words = chunk.split(' ');
+    final List<InlineSpan> spans = [];
+
+    for (int i = 0; i < words.length; i++) {
+      final w = words[i];
+      if (w.isEmpty) continue;
+
+      final orpIndex = _findORP(w);
+      final before = w.substring(0, orpIndex);
+      final orp = w[orpIndex];
+      final after = orpIndex < w.length - 1 ? w.substring(orpIndex + 1) : '';
+
+      spans.add(
+        TextSpan(
+          text: before,
+          style: TextStyle(color: settings.textColor),
+        ),
+      );
+      spans.add(
+        TextSpan(
+          text: orp,
+          style: TextStyle(
+            color: settings.highlightColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+      spans.add(
+        TextSpan(
+          text: after,
+          style: TextStyle(color: settings.textColor),
+        ),
+      );
+
+      if (i < words.length - 1) {
+        spans.add(const TextSpan(text: ' '));
+      }
+    }
 
     return RichText(
+      textAlign: TextAlign.center,
       text: TextSpan(
         style: TextStyle(
           fontSize: settings.fontSize,
           fontWeight: FontWeight.w500,
           letterSpacing: 1.2,
         ),
-        children: [
-          TextSpan(
-            text: before,
-            style: TextStyle(color: settings.textColor),
-          ),
-          TextSpan(
-            text: orp,
-            style: TextStyle(
-              color: settings.highlightColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          TextSpan(
-            text: after,
-            style: TextStyle(color: settings.textColor),
-          ),
-        ],
+        children: spans,
       ),
     );
   }
