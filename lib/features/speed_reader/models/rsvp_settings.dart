@@ -11,6 +11,7 @@ class RsvpSettings extends Equatable {
   final bool showFocusGuide;
   final bool highlightORP; // Optimal Recognition Point
   final int chunkSize; // Number of words to display at once
+  final bool smartPausing; // Pause slightly on punctuation
 
   const RsvpSettings({
     this.wordsPerMinute = 300,
@@ -21,6 +22,7 @@ class RsvpSettings extends Equatable {
     this.showFocusGuide = true,
     this.highlightORP = true,
     this.chunkSize = 1,
+    this.smartPausing = false,
   });
 
   RsvpSettings copyWith({
@@ -32,6 +34,7 @@ class RsvpSettings extends Equatable {
     bool? showFocusGuide,
     bool? highlightORP,
     int? chunkSize,
+    bool? smartPausing,
   }) {
     return RsvpSettings(
       wordsPerMinute: wordsPerMinute ?? this.wordsPerMinute,
@@ -42,6 +45,7 @@ class RsvpSettings extends Equatable {
       showFocusGuide: showFocusGuide ?? this.showFocusGuide,
       highlightORP: highlightORP ?? this.highlightORP,
       chunkSize: chunkSize ?? this.chunkSize,
+      smartPausing: smartPausing ?? this.smartPausing,
     );
   }
 
@@ -58,5 +62,6 @@ class RsvpSettings extends Equatable {
     showFocusGuide,
     highlightORP,
     chunkSize,
+    smartPausing,
   ];
 }

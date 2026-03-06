@@ -18,10 +18,18 @@ class _TextReaderScreenState extends State<TextReaderScreen> {
   bool _isLoading = true;
   String? _error;
 
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _loadFile();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFile() async {
@@ -105,11 +113,19 @@ class _TextReaderScreenState extends State<TextReaderScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(
-          _content,
-          style: const TextStyle(fontSize: 16.0, height: 1.5),
+      body: Scrollbar(
+        controller: _scrollController,
+        interactive: true,
+        thumbVisibility: true,
+        thickness: 8.0,
+        radius: const Radius.circular(4),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _content,
+            style: const TextStyle(fontSize: 16.0, height: 1.5),
+          ),
         ),
       ),
     );

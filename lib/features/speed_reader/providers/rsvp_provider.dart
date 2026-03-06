@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speed_reader/features/speed_reader/models/rsvp_settings.dart';
 
 /// RSVP playback state
@@ -13,10 +14,16 @@ class RsvpProvider extends ChangeNotifier {
   int _currentWordIndex = 0;
   Timer? _timer;
 
+  // TTS fields
+  final FlutterTts _tts = FlutterTts();
+  bool _isTtsMode = false;
+
   RsvpSettings get settings => _settings;
   RsvpPlaybackState get playbackState => _playbackState;
   List<String> get words => _words;
   int get currentWordIndex => _currentWordIndex;
+  bool get isTtsMode => _isTtsMode;
+  
   String get currentWord {
     if (_words.isEmpty) return '';
     final endIndex = (_currentWordIndex + _settings.chunkSize).clamp(0, _words.length);
@@ -25,6 +32,17 @@ class RsvpProvider extends ChangeNotifier {
   int get totalWords => _words.length;
   double get progress =>
       _words.isEmpty ? 0.0 : _currentWordIndex / _words.length;
+
+  RsvpProvider() {
+    _initTts();
+  }
+
+  void _initTts() {
+    _tts.setCompletionHandler(() {
+        _isTtsMode = false;
+        notifyListeners();
+    });
+  }
 
   /// Load text for RSVP reading
   void loadText(String text) {
@@ -36,7 +54,7 @@ class RsvpProvider extends ChangeNotifier {
 
   /// Split text into words
   List<String> _splitIntoWords(String text) {
-    // Remove extra whitespace and split by spaces
+    // Keep punctuation attached and basic newlines
     return text
         .trim()
         .replaceAll(RegExp(r'\s+'), ' ')
@@ -49,19 +67,29 @@ class RsvpProvider extends ChangeNotifier {
   void play() {
     if (_words.isEmpty) return;
 
+    if (_isTtsMode) {
+      _tts.stop();
+      _isTtsMode = false;
+    }
+
     _playbackState = RsvpPlaybackState.playing;
     notifyListeners();
 
     _timer?.cancel();
-    _timer = Timer.periodic(
-      Duration(milliseconds: _settings.delayMs),
-      (_) => _nextWord(),
-    );
+    _scheduleNextWord(_settings.delayMs);
+  }
+
+  void _scheduleNextWord(int delay) {
+    _timer = Timer(Duration(milliseconds: delay), _nextWord);
   }
 
   /// Pause playback
   void pause() {
     _timer?.cancel();
+    if (_isTtsMode) {
+      _tts.stop();
+      _isTtsMode = false;
+    }
     _playbackState = RsvpPlaybackState.paused;
     notifyListeners();
   }
@@ -69,16 +97,50 @@ class RsvpProvider extends ChangeNotifier {
   /// Stop playback and reset
   void stop() {
     _timer?.cancel();
+    _tts.stop();
+    _isTtsMode = false;
     _playbackState = RsvpPlaybackState.stopped;
     _currentWordIndex = 0;
     notifyListeners();
   }
 
+  /// Toggle TTS Audiobook mode
+  Future<void> toggleTts() async {
+    if (_isTtsMode) {
+      pause();
+    } else {
+      pause(); // Stop RSVP
+      _isTtsMode = true;
+      notifyListeners();
+      
+      final textToRead = _words.sublist(_currentWordIndex).join(' ');
+      await _tts.speak(textToRead);
+    }
+  }
+
   /// Move to next word
   void _nextWord() {
+    int nextDelay = _settings.delayMs;
+    
+    // Smart pausing logic
+    if (_settings.smartPausing) {
+      final chunk = currentWord;
+      if (chunk.endsWith('.') || chunk.endsWith('!') || chunk.endsWith('?')) {
+        nextDelay = (_settings.delayMs * 2.5).round();
+      } else if (chunk.endsWith(',') || chunk.endsWith(';') || chunk.endsWith(':')) {
+        nextDelay = (_settings.delayMs * 1.5).round();
+      } else if (chunk.contains('\n') || chunk.endsWith('”') || chunk.endsWith('"')) {
+        nextDelay = (_settings.delayMs * 1.2).round();
+      }
+    }
+
     if (_currentWordIndex + _settings.chunkSize < _words.length) {
       _currentWordIndex += _settings.chunkSize;
       notifyListeners();
+      
+      if (_playbackState == RsvpPlaybackState.playing) {
+        _scheduleNextWord(nextDelay);
+      }
     } else {
       // Reached end
       stop();
@@ -90,6 +152,11 @@ class RsvpProvider extends ChangeNotifier {
     if (index >= 0 && index < _words.length) {
       _currentWordIndex = index - (index % _settings.chunkSize);
       notifyListeners();
+      
+      if (_isTtsMode) {
+         _tts.stop();
+         toggleTts(); // Restart TTS from new location
+      }
     }
   }
 
@@ -122,6 +189,7 @@ class RsvpProvider extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
+    _tts.stop();
     super.dispose();
   }
 }

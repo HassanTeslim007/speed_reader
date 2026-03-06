@@ -101,6 +101,19 @@ class RsvpControls extends StatelessWidget {
                       onPressed: () => _showSettingsDialog(context, provider),
                       tooltip: 'Settings',
                     ),
+
+                    const SizedBox(width: AppConstants.spacingMd),
+
+                    // TTS button
+                    IconButton.filled(
+                      icon: Icon(
+                        provider.isTtsMode ? Icons.volume_up : Icons.volume_off,
+                      ),
+                      onPressed: provider.totalWords > 0
+                          ? () => provider.toggleTts()
+                          : null,
+                      tooltip: provider.isTtsMode ? 'Stop Audiobook' : 'Start Audiobook (TTS)',
+                    ),
                   ],
                 ),
 
@@ -206,6 +219,19 @@ class RsvpControls extends StatelessWidget {
                       );
                     },
                   ),
+                ),
+
+                // Smart Pausing toggle
+                SwitchListTile(
+                  secondary: const Icon(Icons.timer),
+                  title: const Text('Smart Pausing'),
+                  subtitle: const Text('Pause slightly on punctuation'),
+                  value: provider.settings.smartPausing,
+                  onChanged: (value) {
+                    provider.updateSettings(
+                      provider.settings.copyWith(smartPausing: value),
+                    );
+                  },
                 ),
               ],
             ),
