@@ -50,7 +50,7 @@ class _TextReaderScreenState extends State<TextReaderScreen> {
         });
         return;
       }
-      
+
       String text = await file.readAsString();
       final ext = widget.filePath!.split('.').last.toLowerCase();
       if (ext == 'html') {
@@ -73,9 +73,7 @@ class _TextReaderScreenState extends State<TextReaderScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: LoadingWidget(message: 'Loading text...'),
-      );
+      return const Scaffold(body: LoadingWidget(message: 'Loading text...'));
     }
 
     if (_error != null) {
@@ -96,7 +94,13 @@ class _TextReaderScreenState extends State<TextReaderScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.filePath!.split('/').last),
+        title: Text(
+          widget.filePath!
+              .split('/')
+              .last
+              .replaceAll(RegExp(r'\.(txt|html)$'), '')
+              .replaceAll('_', ' '),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.speed),

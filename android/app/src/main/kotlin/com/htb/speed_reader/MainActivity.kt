@@ -1,4 +1,4 @@
-package com.example.speed_reader
+package com.htb.speed_reader
 
 import io.flutter.embedding.android.FlutterActivity
 
