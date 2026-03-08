@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:speed_reader/core/constants/app_constants.dart';
 import 'package:speed_reader/features/library/models/library_item.dart';
 import 'package:uuid/uuid.dart';
@@ -15,19 +16,81 @@ class LibraryRepository {
 
   LibraryRepository(this._prefs);
 
-  /// Get all library items
-  List<LibraryItem> getLibraryItems() {
+  /// Get all library items with absolute paths correctly resolved for the current session
+  Future<List<LibraryItem>> getLibraryItems() async {
+    final appDir = await getApplicationDocumentsDirectory();
     final jsonString = _prefs.getString(AppConstants.keyRecentFiles);
     if (jsonString == null) return [];
 
     try {
       final List<dynamic> jsonList = jsonDecode(jsonString);
-      return jsonList
+      final items = jsonList
           .map((json) => LibraryItem.fromJson(json as Map<String, dynamic>))
           .toList();
+
+      // Ensure paths are relative to the current app directory (handles iOS/macOS path changes)
+      return _ensureAbsolutePaths(items, appDir.path);
     } catch (e) {
+      debugPrint('Error loading library items: $e');
       return [];
     }
+  }
+
+  /// Helper to convert stored paths to current absolute paths
+  List<LibraryItem> _ensureAbsolutePaths(List<LibraryItem> items, String appDirPath) {
+    return items.map((item) {
+      String resolvedFilePath = item.filePath;
+      String? resolvedThumbPath = item.thumbnailPath;
+
+      // If filePath is absolute but doesn't exist, try resolving it relative to appDirPath
+      if (p.isAbsolute(resolvedFilePath)) {
+        if (!File(resolvedFilePath).existsSync()) {
+          final fileName = p.basename(resolvedFilePath);
+          resolvedFilePath = p.join(appDirPath, 'library', fileName);
+        }
+      } else {
+        // If it's already relative, join it
+        resolvedFilePath = p.join(appDirPath, resolvedFilePath);
+      }
+
+      // Do the same for thumbnail
+      if (resolvedThumbPath != null) {
+        if (p.isAbsolute(resolvedThumbPath)) {
+          if (!File(resolvedThumbPath).existsSync()) {
+            final thumbName = p.basename(resolvedThumbPath);
+            resolvedThumbPath = p.join(appDirPath, 'thumbnails', thumbName);
+          }
+        } else {
+          resolvedThumbPath = p.join(appDirPath, resolvedThumbPath);
+        }
+      }
+
+      return item.copyWith(
+        filePath: resolvedFilePath,
+        thumbnailPath: resolvedThumbPath,
+      );
+    }).toList();
+  }
+
+  /// Helper to convert absolute paths to relative paths for storage
+  LibraryItem _makeRelative(LibraryItem item, String appDirPath) {
+    String storedFilePath = item.filePath;
+    String? storedThumbPath = item.thumbnailPath;
+
+    if (p.isAbsolute(storedFilePath) && storedFilePath.startsWith(appDirPath)) {
+      storedFilePath = p.relative(storedFilePath, from: appDirPath);
+    }
+
+    if (storedThumbPath != null &&
+        p.isAbsolute(storedThumbPath) &&
+        storedThumbPath.startsWith(appDirPath)) {
+      storedThumbPath = p.relative(storedThumbPath, from: appDirPath);
+    }
+
+    return item.copyWith(
+      filePath: storedFilePath,
+      thumbnailPath: storedThumbPath,
+    );
   }
 
   /// Add a new library item
@@ -94,7 +157,7 @@ class LibraryRepository {
       );
 
       // Save to library
-      final items = getLibraryItems();
+      final items = await getLibraryItems();
       items.add(item);
       await _saveLibraryItems(items);
 
@@ -107,7 +170,7 @@ class LibraryRepository {
 
   /// Update library item
   Future<void> updateLibraryItem(LibraryItem item) async {
-    final items = getLibraryItems();
+    final items = await getLibraryItems();
     final index = items.indexWhere((i) => i.id == item.id);
 
     if (index != -1) {
@@ -118,7 +181,7 @@ class LibraryRepository {
 
   /// Remove library item
   Future<void> removeLibraryItem(String id) async {
-    final items = getLibraryItems();
+    final items = await getLibraryItems();
     final index = items.indexWhere((item) => item.id == id);
 
     if (index != -1) {
@@ -144,7 +207,7 @@ class LibraryRepository {
 
   /// Update last opened date
   Future<void> updateLastOpened(String id, int currentPage) async {
-    final items = getLibraryItems();
+    final items = await getLibraryItems();
     final index = items.indexWhere((i) => i.id == id);
 
     if (index != -1) {
@@ -192,7 +255,11 @@ class LibraryRepository {
   }
 
   Future<void> _saveLibraryItems(List<LibraryItem> items) async {
-    final jsonList = items.map((item) => item.toJson()).toList();
+    final appDir = await getApplicationDocumentsDirectory();
+    final relativeItems =
+        items.map((item) => _makeRelative(item, appDir.path)).toList();
+
+    final jsonList = relativeItems.map((item) => item.toJson()).toList();
     await _prefs.setString(AppConstants.keyRecentFiles, jsonEncode(jsonList));
   }
 }

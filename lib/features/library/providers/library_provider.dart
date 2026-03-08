@@ -43,7 +43,7 @@ class LibraryNotifier extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final items = _repository.getLibraryItems();
+      final items = await _repository.getLibraryItems();
 
       // Sort by last opened date (most recent first)
       items.sort((a, b) {

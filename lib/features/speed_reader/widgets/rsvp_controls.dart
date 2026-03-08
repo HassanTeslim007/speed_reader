@@ -101,19 +101,6 @@ class RsvpControls extends StatelessWidget {
                       onPressed: () => _showSettingsDialog(context, provider),
                       tooltip: 'Settings',
                     ),
-
-                    const SizedBox(width: AppConstants.spacingMd),
-
-                    // TTS button
-                    IconButton.filled(
-                      icon: Icon(
-                        provider.isTtsMode ? Icons.volume_up : Icons.volume_off,
-                      ),
-                      onPressed: provider.totalWords > 0
-                          ? () => provider.toggleTts()
-                          : null,
-                      tooltip: provider.isTtsMode ? 'Stop Audiobook' : 'Start Audiobook (TTS)',
-                    ),
                   ],
                 ),
 
